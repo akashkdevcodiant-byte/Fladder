@@ -1,36 +1,52 @@
-stages:
-  - build
+name: Build Linux ARM64
 
-build_linux_arm64:
-  stage: build
-  # Target an ARM64 runner. For GitLab SaaS use 'saas-linux-small-arm64'. 
-  # For self-hosted runners, use your custom assigned ARM64 tag.
-  tags:
-    - saas-linux-small-arm64
-  image: ubuntu:22.04
-  before_script:
-    # 1. Install necessary Linux desktop dependencies for Flutter
-    - apt-get update -y
-    - apt-get install -y curl git xz-utils zip unzip libglu1-mesa
-    - apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++6
-    
-    # 2. Clone the Flutter SDK dynamically
-    - git clone https://github.com/flutter/flutter.git -b stable /opt/flutter
-    - export PATH="$PATH:/opt/flutter/bin"
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
 
-    # 3. Verify the installation environment
-    - flutter doctor -v
-  script:
-    # 4. Enable Linux desktop support inside the environment
-    - flutter config --enable-linux-desktop
-    
-    # 5. Fetch dependencies and compile the ARM64 release binary
-    - flutter pub get
-    - flutter build linux --release
-  artifacts:
-    name: "flutter-linux-arm64-release"
-    when: on_success
-    paths:
-      # Capture the generated ARM64 bundle assets
-      - build/linux/arm64/release/bundle/
-    expire_in: 1 week
+jobs:
+  build_linux_arm64:
+    # Note: Default GitHub-hosted runners are x86_64.
+    # To run on actual ARM64, you must use a self-hosted ARM64 runner tag here.
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Linux desktop dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y curl git xz-utils zip unzip libglu1-mesa
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++6
+
+      - name: Clone Flutter SDK
+        run: |
+          sudo git clone https://github.com/flutter/flutter.git -b stable /opt/flutter
+          echo "/opt/flutter/bin" >> $GITHUB_PATH
+
+      - name: Verify installation environment
+        run: |
+          export PATH="$PATH:/opt/flutter/bin"
+          flutter doctor -v
+
+      - name: Enable Linux desktop support
+        run: |
+          export PATH="$PATH:/opt/flutter/bin"
+          flutter config --enable-linux-desktop
+
+      - name: Fetch dependencies and compile
+        run: |
+          export PATH="$PATH:/opt/flutter/bin"
+          flutter pub get
+          flutter build linux --release
+
+      - name: Upload Build Artifacts
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: flutter-linux-arm64-release
+          path: build/linux/arm64/release/bundle/
+          retention-days: 7
