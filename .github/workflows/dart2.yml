@@ -1,0 +1,51 @@
+name: Build Linux ARM64
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build_linux_arm64:
+    # Note: Default GitHub-hosted runners are x86_64.
+    # To compile natively for ARM64 on cloud-hosted systems, ensure you are running on 
+    # an ARM64 runner (e.g., runs-on: ubuntu-24.04-arm64 if using GitHub Team/Enterprise).
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Linux desktop dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y curl git xz-utils zip unzip libglu1-mesa
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++6
+
+      # This replaces the custom git clone script and guarantees the Flutter SDK is fully available
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Verify installation environment
+        run: flutter doctor -v
+
+      - name: Enable Linux desktop support
+        run: flutter config --enable-linux-desktop
+
+      - name: Fetch dependencies and compile
+        run: |
+          flutter pub get
+          flutter build linux --release
+
+      - name: Upload Build Artifacts
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: flutter-linux-arm64-release
+          path: build/linux/x64/release/bundle/ # Note: Change to 'arm64' if building on a native ARM64 runner host
+          retention-days: 7
+
