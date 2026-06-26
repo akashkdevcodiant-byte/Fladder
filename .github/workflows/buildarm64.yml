@@ -49,4 +49,4 @@ jobs:
         with:
           name: flutter-linux-arm64-release
           path: build/linux/arm64/release/bundle/
-          retention-days: 7
+          retention-days: 7 
