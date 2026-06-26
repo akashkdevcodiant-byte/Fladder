@@ -106,6 +106,11 @@ jobs:
     needs: [fetch-info]
     # Note: Default hosted runners are x86_64. Update this tag if utilizing your own ARM64 host.
     runs-on: ubuntu-22.04
+    
+    # Required explicit token scope to perform commits inside the workflow
+    permissions:
+      contents: write
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4.1.1
@@ -115,9 +120,7 @@ jobs:
           sudo apt-get update -y
           sudo apt-get install -y curl git xz-utils zip unzip libglu1-mesa
           sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++6
-          sudo apt-get install -y libasound2-dev
-          # Fixed: Added native video player dependencies for media_kit_video
-          sudo apt-get install -y libmpv-dev mpv
+          sudo apt-get install -y libasound2-dev libmpv-dev mpv
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2.19.0
@@ -142,17 +145,18 @@ jobs:
             flutter build linux --release
           fi
 
-      - name: Organize Artifacts
+      - name: Organize Artifacts into Repository Build Folder
         run: |
-          mkdir -p build/linux/artifacts
+          # Create a custom directory specifically to commit back to GitHub
+          mkdir -p committed-builds/
           if [[ "${{ needs.fetch-info.outputs.build_type }}" == "development" ]]; then
-            cp -r build/linux/x64/debug/bundle/* build/linux/artifacts/ || cp -r build/linux/arm64/debug/bundle/* build/linux/artifacts/ || true
+            cp -r build/linux/x64/debug/bundle/* committed-builds/ || cp -r build/linux/arm64/debug/bundle/* committed-builds/ || true
           else
-            cp -r build/linux/x64/release/bundle/* build/linux/artifacts/ || cp -r build/linux/arm64/release/bundle/* build/linux/artifacts/ || true
+            cp -r build/linux/x64/release/bundle/* committed-builds/ || cp -r build/linux/arm64/release/bundle/* committed-builds/ || true
           fi
 
-      - name: Archive Linux Artifacts
-        uses: actions/upload-artifact@v4.0.0
+      - name: Commit Build Files Back to GitHub Repository
+        uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          name: fladder-linux-${{ needs.fetch-info.outputs.build_type }}
-          path: build/linux/artifacts/
+          commit_message: "automated: push linux application artifacts"
+          file_pattern: "committed-builds/*"
