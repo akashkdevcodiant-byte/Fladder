@@ -137,4 +137,19 @@ jobs:
             flutter build linux --debug
           else
             flutter build linux --release
-          
+          fi
+
+      - name: Organize Artifacts
+        run: |
+          mkdir -p build/linux/artifacts
+          if [[ "${{ needs.fetch-info.outputs.build_type }}" == "development" ]]; then
+            cp -r build/linux/x64/debug/bundle/* build/linux/artifacts/ || cp -r build/linux/arm64/debug/bundle/* build/linux/artifacts/ || true
+          else
+            cp -r build/linux/x64/release/bundle/* build/linux/artifacts/ || cp -r build/linux/arm64/release/bundle/* build/linux/artifacts/ || true
+          fi
+
+      - name: Archive Linux Artifacts
+        uses: actions/upload-artifact@v4.0.0
+        with:
+          name: fladder-linux-${{ needs.fetch-info.outputs.build_type }}
+          path: build/linux/artifacts/
