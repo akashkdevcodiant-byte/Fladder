@@ -46,5 +46,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: flutter-linux-arm64-release
-          path: build/linux/x64/release/bundle/ # Note: Change to 'arm64' if building on a native ARM64 runner host
+          path: build/linux/arm64/release/bundle/ # Note: Change to 'arm64' if building on a native ARM64 runner host
           retention-days: 7
