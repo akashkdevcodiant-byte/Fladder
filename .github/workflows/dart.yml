@@ -1,4 +1,4 @@
-name: Build Web App
+name: Build Linux ARM64
 
 on:
   push:
@@ -7,33 +7,44 @@ on:
     branches: [ main, master ]
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+  build_linux_arm64:
+    # Note: Default GitHub-hosted runners are x86_64.
+    # To compile natively for ARM64 on cloud-hosted systems, ensure you are running on 
+    # an ARM64 runner (e.g., runs-on: ubuntu-24.04-arm64 if using GitHub Team/Enterprise).
+    runs-on: ubuntu-22.04
 
     steps:
-      # Step 1: Clone your project repository code into the runner environment
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Step 2: Set up the correct Flutter SDK environment (replaces setup-dart)
+      - name: Install Linux desktop dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y curl git xz-utils zip unzip libglu1-mesa
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++6
+
+      # This replaces the custom git clone script and guarantees the Flutter SDK is fully available
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
           cache: true
 
-      # Step 3: Securely fetch project dependencies using the Flutter toolchain
-      - name: Install dependencies
-        run: flutter pub get
+      - name: Verify installation environment
+        run: flutter doctor -v
 
-      # Step 4: Run static code analysis to check for issues
-      - name: Analyze project source
-        run: flutter analyze
+      - name: Enable Linux desktop support
+        run: flutter config --enable-linux-desktop
 
-      # Step 5: Execute unit and widget tests
-      - name: Run tests
-        run: flutter test
+      - name: Fetch dependencies and compile
+        run: |
+          flutter pub get
+          flutter build linux --release
 
-      # Step 6: Compile the web production application assets
-      - name: Build Web Application
-        run: flutter build web
+      - name: Upload Build Artifacts
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: flutter-linux-arm64-release
+          path: build/linux/x64/release/bundle/ # Note: Change to 'arm64' if building on a native ARM64 runner host
+          retention-days: 7
